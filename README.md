@@ -306,3 +306,172 @@ async fn users(Extension(pool): Extension<db::Pool>) -> Result<Json<Vec<User>>, 
 
 6. run the server
 
+
+## Set up Pages crate
+
+1. cargo init --lib pages
+2. cd pages
+3. install dependencies
+
+```sh
+cargo add dioxus 
+cargo adddioxus-ssr
+cargo add --path ../db
+```
+
+4. create `src/layout.rs`
+
+<details>
+<summary>layout.rs</summary>
+
+```rust
+#![allow(non_snake_case)]
+
+use dioxus::prelude::*;
+
+#[component]
+pub fn Layout(title: String, children: Element) -> Element {
+    rsx!(
+        head {
+            title { "{title}" }
+            meta { charset: "utf-8" }
+            meta { "http-equiv": "X-UA-Compatible", content: "IE=edge" }
+            meta {
+                name: "viewport",
+                content: "width=device-width, initial-scale=1"
+            }
+        }
+        body { {children} }
+    )
+}
+```
+</details>
+
+5. create `src/users.rs`
+
+<details>
+<summary>users.rs</summary>
+
+```rust
+use crate::layout::Layout;
+use db::User;
+use dioxus::prelude::*;
+
+// Define the properties for IndexPage
+#[derive(Props, Clone, PartialEq)] // Add Clone and PartialEq here
+pub struct IndexPageProps {
+    pub users: Vec<User>,
+}
+
+// Define the IndexPage component
+#[component]
+pub fn IndexPage(props: IndexPageProps) -> Element {
+    rsx! {
+        Layout { title: "Users Table",
+            table {
+                thead {
+                    tr {
+                        th { "ID" }
+                        th { "Email" }
+                    }
+                }
+                tbody {
+                    for user in props.users {
+                        tr {
+                            td {
+                                strong { "{user.id}" }
+                            }
+                            td { "{user.email}" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+</details>
+
+6. update `src/lib.rs`
+
+<details> 
+
+<summary>lib.rs</summary>
+
+```rust
+mod layout;
+pub mod users;
+use dioxus::prelude::*;
+
+pub fn render(mut virtual_dom: VirtualDom) -> String {
+    virtual_dom.rebuild_in_place();
+    let html = dioxus_ssr::render(&virtual_dom);
+    format!("<!DOCTYPE html><html lang='en'>{}</html>", html)
+}
+```
+</details>
+
+7. cd to `server` crate
+
+8. update dependencies
+
+```sh
+cargo add dioxus
+cargo add --path ../pages
+```
+
+9. update `main.rs`
+
+<details>
+<summary>main.rs</summary>
+
+```rust
+mod config;
+mod errors;
+use crate::errors::CustomError;
+use axum::response::Html;
+use axum::{extract::Extension, routing::get, Router};
+use dioxus::dioxus_core::VirtualDom;
+use pages::{
+    render,
+    users::{IndexPage, IndexPageProps},
+};
+use std::net::SocketAddr;
+
+#[tokio::main]
+async fn main() {
+    let config = config::Config::new();
+
+    let pool = db::create_pool(&config.database_url);
+
+    // build our application with a route
+    let app = Router::new()
+        .route("/", get(users))
+        .layer(Extension(config))
+        .layer(Extension(pool.clone()));
+
+    // run it
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    println!("listening on... {}", addr);
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    axum::serve(listener, app.into_make_service())
+        .await
+        .unwrap();
+}
+
+pub async fn users(Extension(pool): Extension<db::Pool>) -> Result<Html<String>, CustomError> {
+    let client = pool.get().await?;
+
+    let users = db::queries::users::get_users().bind(&client).all().await?;
+
+    let html = render(VirtualDom::new_with_props(
+        IndexPage,
+        IndexPageProps { users },
+    ));
+
+    Ok(Html(html))
+}
+```
+</details>
+
+10. run the server

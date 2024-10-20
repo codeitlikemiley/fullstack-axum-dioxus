@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+db = { version = "0.1.0", path = "../db" }
+dioxus = "0.5.6"
+dioxus-ssr = "0.5.6"
