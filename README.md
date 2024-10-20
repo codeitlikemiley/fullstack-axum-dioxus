@@ -1,3 +1,8 @@
+# Dioxus Fullstack (Island Architecture)
+
+## TODO :
+- see if we can use rsx on `components` crate so we dont have to write web-sys to access DOM elements
+
 ## Requirements
 
 - geni cli
@@ -625,7 +630,65 @@ js-sys = "0.3.72"
 wasm-bindgen = "0.2.93"
 web-sys = { version = "0.3.72", features = ["Document", "Element", "HtmlElement", "Window", "console"] }
 ```
-3. add example code to test on `src/lib.rs`
+
+3. set the crate type to `cdylib` and `rlib`
+
+4. add example code to test on `src/lib.rs`
+
+<details>
+
+<summary>lib.rs</summary>
+
+```rust
+use js_sys::Math;
+use wasm_bindgen::prelude::*;
+use web_sys::{console, window, Element};
+
+#[wasm_bindgen]
+pub fn say_hello() {
+    let random_number = Math::random();
+    let message = format!("Hello from Rust! Random number: {}", random_number);
+
+    // Log to the browser console
+    console::log_1(&"Logging to console from Rust!".into());
+    console::log_1(&format!("Generated random number: {}", random_number).into());
+
+    // Show alert
+    web_sys::window()
+        .unwrap()
+        .alert_with_message(&message)
+        .unwrap();
+}
+
+#[wasm_bindgen(start)]
+pub fn start() -> Result<(), JsValue> {
+    // Access the DOM window object
+    let window = window().unwrap();
+    let document = window.document().unwrap();
+
+    // Get the button element by ID
+    let button: Element = document.get_element_by_id("alert-btn").unwrap();
+
+    // Set an event listener for the button click
+    let closure = Closure::wrap(Box::new(move || {
+        // Call the Rust function say_hello
+        say_hello();
+    }) as Box<dyn Fn()>);
+
+    // Set an event listener for the button click
+    button
+        .dyn_ref::<web_sys::HtmlElement>()
+        .unwrap()
+        .set_onclick(Some(closure.as_ref().unchecked_ref()));
+
+    // We need to keep the closure alive, so we store it in memory.
+    closure.forget();
+
+    Ok(())
+}
+```
+
+</details>
 
 4. cd to assets crate
 5. create `js/pages/users` folder
@@ -637,3 +700,43 @@ wasm-pack build --target web --out-dir ../assets/js/pages/users
 ```
 
 8. Use the generated asset on `pages/src/users.rs`
+
+
+```rust
+            script {
+                r#type: "module",
+                dangerous_inner_html: r#"
+import init from '/static/components.js';
+init();
+"#
+            }
+```
+
+### Feature gating for wasm components
+
+we need to use feature gating to only include components that are needed
+
+```sh
+wasm-pack build --target web --out-dir ../assets/js/pages/${feature} --features ${feature}
+```
+
+e.g.
+
+```toml
+[features]
+default = []
+users = []
+featurex = []
+
+```
+
+on rust code we can do 
+
+```rust
+#[cfg(feature = "feature1")]
+#[wasm_bindgen]
+fn some_function() {
+    // Implementation for feature1
+}
+```
+
