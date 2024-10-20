@@ -1,0 +1,10 @@
+[package]
+name = "assets"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+mime = "0.3"
+
+[build-dependencies]
+ructe = { version = "0.17", default-features = false, features = ["mime03"] }

@@ -475,3 +475,140 @@ pub async fn users(Extension(pool): Extension<db::Pool>) -> Result<Html<String>,
 </details>
 
 10. run the server
+
+## Set up `assets` crate for static files
+
+1. cargo init --lib assets
+2. cd assets
+3. mkdir images
+4. create an `avatar.svg` file on `images` folder
+
+<details>
+
+<summary>avatar.svg</summary>
+
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <path fill="#fff" d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM160 256c0-53 43-96 96-96h64c53 0 96-43 96-96s-43-96-96-96H160zm0 96c0 53 43 96 96 96h64c53 0 96-43 96-96s-43-96-96-96H160zm0 96c0 53 43 96 96 96h64c53 0 96-43 96-96s-43-96-96-96H160z"/>
+</svg>
+```
+</details>
+
+5. touch `build.rs`
+
+6. update `build.rs`
+
+<details>
+<summary>build.rs</summary>
+
+```rust
+use ructe::{Result, Ructe};
+
+fn main() -> Result<()> {
+    let mut ructe = Ructe::from_env().unwrap();
+    let mut statics = ructe.statics().unwrap();
+    statics.add_files("images").unwrap();
+    ructe.compile_templates("images").unwrap();
+
+    Ok(())
+}
+```
+
+</details>
+
+7. add dependencies
+
+```sh
+cargo add mime@0.3
+cargo add --build ructe@0.17 --no-default-features -F mime03
+```
+
+8. update `lib.rs`
+
+<details>
+<summary>lib.rs</summary>
+
+```rust
+include!(concat!(env!("OUT_DIR"), "/templates.rs"));
+
+pub use templates::statics as files;
+```
+</details>
+
+9. cd to `server` crate
+
+10. create `static_files.rs`
+
+11. update `static_files.rs`
+
+<details>
+<summary>static_files.rs</summary>
+
+```rust
+use assets::templates::statics::StaticFile;
+use axum::body::Body;
+use axum::extract::Path;
+use axum::http::{header, HeaderValue, Response, StatusCode};
+use axum::response::IntoResponse;
+
+pub async fn static_path(Path(path): Path<String>) -> impl IntoResponse {
+    let path = path.trim_start_matches('/');
+
+    if let Some(data) = StaticFile::get(path) {
+        Response::builder()
+            .status(StatusCode::OK)
+            .header(
+                header::CONTENT_TYPE,
+                HeaderValue::from_str(data.mime.as_ref()).unwrap(),
+            )
+            .body(Body::from(data.content))
+            .unwrap()
+    } else {
+        Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::empty())
+            .unwrap()
+    }
+}
+```
+</details>
+
+12. modify `main.rs` to add the new route for static files
+
+<details>
+<summary>main.rs</summary>
+
+```rust
+// load module
+mod static_files;
+
+let app = Router::new()
+    .route("/", get(users))
+    .route("/static/*path", get(static_files::static_path)) // add this line
+    .layer(Extension(config))
+    .layer(Extension(pool.clone()));
+... 
+```
+
+13. cargo add --path ../assets
+
+14. use the static files on `pages/src/users.rs`
+
+<details>
+<summary>users.rs</summary>
+
+```rust
+// use avatar
+use assets::files::avatar_svg;
+
+...
+
+// access the static file
+img {
+    src: format!("/static/{}", avatar_svg.name),
+    width: "16",
+    height: "16"
+}
+```
+
+15. run the server

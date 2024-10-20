@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+assets = { version = "0.1.0", path = "../assets" }
 axum = { version = "0.7", default-features = false, features = ["json", "http1", "tokio"] }
 db = { version = "0.1.0", path = "../db" }
 dioxus = "0.5.6"

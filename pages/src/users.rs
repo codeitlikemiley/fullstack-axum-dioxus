@@ -1,4 +1,5 @@
 use crate::layout::Layout;
+use assets::files::avatar_svg;
 use db::User;
 use dioxus::prelude::*;
 
@@ -24,6 +25,11 @@ pub fn IndexPage(props: IndexPageProps) -> Element {
                     for user in props.users {
                         tr {
                             td {
+                                img {
+                                    src: format!("/static/{}", avatar_svg.name),
+                                    width: "16",
+                                    height: "16"
+                                }
                                 strong { "{user.id}" }
                             }
                             td { "{user.email}" }

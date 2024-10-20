@@ -9,6 +9,7 @@ use pages::{
     users::{IndexPage, IndexPageProps},
 };
 use std::net::SocketAddr;
+mod static_files;
 
 #[tokio::main]
 async fn main() {
@@ -19,6 +20,7 @@ async fn main() {
     // build our application with a route
     let app = Router::new()
         .route("/", get(users))
+        .route("/static/*path", get(static_files::static_path))
         .layer(Extension(config))
         .layer(Extension(pool.clone()));
 
