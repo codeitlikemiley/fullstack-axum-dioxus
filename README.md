@@ -161,3 +161,148 @@ mod tests {
 </details>
 
 8. build the crate and run the tests using cargo-runner
+
+
+## Set up server crate
+
+1. cd server
+2. touch src/config.rs
+
+<details>
+<summary>config.rs</summary>
+
+```rust
+#[derive(Clone, Debug)]
+pub struct Config {
+    pub database_url: String,
+}
+
+impl Config {
+    pub fn new() -> Config {
+        let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not set");
+
+        Config { database_url }
+    }
+}
+```
+</details>
+
+3. touch src/errors.rs
+
+<details>
+<summary>errors.rs</summary>
+
+```rust
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+use db::{PoolError, TokioPostgresError};
+use std::fmt;
+
+#[derive(Debug)]
+pub enum CustomError {
+    FaultySetup(String),
+    Database(String),
+}
+
+// Allow the use of "{}" format specifier
+impl fmt::Display for CustomError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            CustomError::FaultySetup(ref cause) => write!(f, "Setup Error: {}", cause),
+            //CustomError::Unauthorized(ref cause) => write!(f, "Setup Error: {}", cause),
+            CustomError::Database(ref cause) => {
+                write!(f, "Database Error: {}", cause)
+            }
+        }
+    }
+}
+
+// So that errors get printed to the browser?
+impl IntoResponse for CustomError {
+    fn into_response(self) -> Response {
+        let (status, error_message) = match self {
+            CustomError::Database(message) => (StatusCode::UNPROCESSABLE_ENTITY, message),
+            CustomError::FaultySetup(message) => (StatusCode::UNPROCESSABLE_ENTITY, message),
+        };
+
+        format!("status = {}, message = {}", status, error_message).into_response()
+    }
+}
+
+impl From<axum::http::uri::InvalidUri> for CustomError {
+    fn from(err: axum::http::uri::InvalidUri) -> CustomError {
+        CustomError::FaultySetup(err.to_string())
+    }
+}
+
+impl From<TokioPostgresError> for CustomError {
+    fn from(err: TokioPostgresError) -> CustomError {
+        CustomError::Database(err.to_string())
+    }
+}
+
+impl From<PoolError> for CustomError {
+    fn from(err: PoolError) -> CustomError {
+        CustomError::Database(err.to_string())
+    }
+}
+```
+</details>
+
+4. Add dependencies
+
+```sh
+cargo add axum@0.7 --no-default-features -F json,http1,tokio
+cargo add tokio@1 --no-default-features -F macros,fs,rt-multi-thread
+cargo add --path ../db
+```
+
+5. update `main.rs`
+
+<details>
+<summary>main.rs</summary>
+
+```rust
+mod config;
+mod errors;
+
+use crate::errors::CustomError;
+use axum::{extract::Extension, response::Json, routing::get, Router};
+use db::User;
+use std::net::SocketAddr;
+
+#[tokio::main]
+async fn main() {
+    let config = config::Config::new();
+
+    let pool = db::create_pool(&config.database_url);
+
+    // build our application with a route
+    let app = Router::new()
+        .route("/", get(users))
+        .layer(Extension(config))
+        .layer(Extension(pool.clone()));
+
+    // run it
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    println!("listening on {}", addr);
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    axum::serve(listener, app.into_make_service())
+        .await
+        .unwrap();
+}
+
+async fn users(Extension(pool): Extension<db::Pool>) -> Result<Json<Vec<User>>, CustomError> {
+    let client = pool.get().await?;
+
+    let users = db::queries::users::get_users().bind(&client).all().await?;
+
+    Ok(Json(users))
+}
+```
+</details>
+
+6. run the server
+

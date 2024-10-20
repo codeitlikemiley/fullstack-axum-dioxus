@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+axum = { version = "0.7", default-features = false, features = ["json", "http1", "tokio"] }
+db = { version = "0.1.0", path = "../db" }
+tokio = { version = "1", default-features = false, features = ["macros", "fs", "rt-multi-thread"] }
