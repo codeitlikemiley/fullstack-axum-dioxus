@@ -612,3 +612,28 @@ img {
 ```
 
 15. run the server
+
+## Set up Components crate
+
+1. cargo init --lib components
+
+2. add dependencies
+
+```toml
+dioxus = "0.5.6"
+js-sys = "0.3.72"
+wasm-bindgen = "0.2.93"
+web-sys = { version = "0.3.72", features = ["Document", "Element", "HtmlElement", "Window", "console"] }
+```
+3. add example code to test on `src/lib.rs`
+
+4. cd to assets crate
+5. create `js/pages/users` folder
+6. go back to `components` crate
+7. generate assets using command
+
+```sh
+wasm-pack build --target web --out-dir ../assets/js/pages/users
+```
+
+8. Use the generated asset on `pages/src/users.rs`

@@ -15,6 +15,7 @@ pub fn IndexPage(props: IndexPageProps) -> Element {
     rsx! {
         Layout { title: "Users Table",
             table {
+                button { id: "alert-btn", "Click me!" }
                 thead {
                     tr {
                         th { "ID" }
@@ -36,6 +37,13 @@ pub fn IndexPage(props: IndexPageProps) -> Element {
                         }
                     }
                 }
+            }
+            script {
+                r#type: "module",
+                dangerous_inner_html: r#"
+import init from '/static/components.js';
+init();
+"#
             }
         }
     }
