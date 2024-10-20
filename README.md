@@ -3,6 +3,13 @@
 ## TODO :
 - see if we can use rsx on `components` crate so we dont have to write web-sys to access DOM elements
 
+<details>
+<summary>Screenshot</summary>
+
+<img width="1512" alt="Screenshot 2024-10-21 at 6 48 22 AM" src="https://github.com/user-attachments/assets/19fb1262-78d9-426a-93d8-34dce0c61149">
+
+</details>
+
 ## Requirements
 
 - geni cli
