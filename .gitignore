@@ -37,3 +37,6 @@ report.*.json
 *.jpg
 *.gif
 *.png
+
+# Stow directory (managed separately)
+.stow/

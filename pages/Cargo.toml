@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 db = { version = "0.1.0", path = "../db" }
 assets = { version = "0.1.0", path = "../assets" }
-dioxus = "0.5.6"
-dioxus-ssr = "0.5.6"
+dioxus = "0.6.3"
+dioxus-ssr = "0.6.2"

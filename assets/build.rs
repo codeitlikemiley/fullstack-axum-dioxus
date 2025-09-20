@@ -25,6 +25,15 @@ fn add_generated_wasm_files(
     dir: &str,
     skip_files: &[&str],
 ) -> Result<()> {
+    // Check if directory exists before trying to read it
+    match fs::metadata(dir) {
+        Ok(_) => {} // Directory exists, continue
+        Err(_) => {
+            println!("cargo:warning=Directory '{}' does not exist, skipping", dir);
+            return Ok(());
+        }
+    }
+
     let entries = fs::read_dir(dir).map_err(ructe::RucteError::from)?;
 
     for entry in entries {

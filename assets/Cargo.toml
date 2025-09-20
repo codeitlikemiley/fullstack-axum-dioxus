@@ -8,4 +8,4 @@ mime = "0.3"
 
 
 [build-dependencies]
-ructe = { version = "0.17", default-features = false, features = ["mime03"] }
+ructe = { version = "0.18.2", default-features = false, features = ["mime03"] }
